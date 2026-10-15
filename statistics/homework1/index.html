@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toy Elliptic-Curve Scalar Multiplication</title>
+<style>
+  :root { color-scheme: light; --ink:#18243a; --muted:#5b6880; --line:#dfe5ef; --paper:#f5f7fb; --panel:#fff; --blue:#315ee8; --blue-soft:#eaf0ff; --teal:#138a83; --gold:#bd7800; --red:#a33b54; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  header { padding:34px max(22px,calc((100vw - 1120px)/2)); color:#fff; background:linear-gradient(125deg,#142343,#2545a0 70%,#167d87); }
+  header .eyebrow { text-transform:uppercase; letter-spacing:.14em; font-size:.74rem; opacity:.82; font-weight:700; }
+  h1 { font-size:clamp(1.65rem,3vw,2.45rem); line-height:1.13; margin:.45rem 0 .7rem; }
+  header p { max-width:790px; margin:0; color:#e7edff; }
+  main { max-width:1120px; padding:24px 20px 42px; margin:auto; }
+  .notice { border:1px solid #f0d6a7; background:#fff8ea; color:#654d22; padding:12px 15px; border-radius:12px; margin-bottom:18px; }
+  .layout { display:grid; grid-template-columns: minmax(280px, .88fr) minmax(0,1.55fr); gap:18px; align-items:start; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px; box-shadow:0 5px 20px #1a2a4b08; min-width:0; }
+  h2 { font-size:1.1rem; margin:0 0 13px; }
+  h3 { font-size:.95rem; margin:18px 0 8px; }
+  .muted { color:var(--muted); }
+  .formula { background:#f0f4fb; border:1px solid #e2e8f4; border-radius:10px; padding:11px 12px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; margin:8px 0 14px; overflow-wrap:anywhere; }
+  label { display:block; font-weight:650; margin:12px 0 5px; }
+  input, select { width:100%; border:1px solid #cbd4e2; background:white; border-radius:9px; padding:10px 11px; font:inherit; color:var(--ink); }
+  input:focus,select:focus,button:focus-visible { outline:3px solid #9cb7ff; outline-offset:2px; }
+  .fieldrow { display:grid; grid-template-columns:1fr 1.1fr; gap:10px; }
+  .buttons { display:flex; flex-wrap:wrap; gap:8px; margin-top:15px; }
+  button { border:0; border-radius:9px; padding:10px 13px; font:inherit; font-weight:700; cursor:pointer; background:var(--blue); color:#fff; }
+  button.secondary { background:var(--blue-soft); color:#2448bd; }
+  button.dark { background:#e9edf4; color:#26344c; }
+  button:disabled { opacity:.55; cursor:not-allowed; }
+  .keyresult { background:#edf9f6; border:1px solid #c5e9df; border-radius:12px; padding:14px; margin-top:15px; }
+  .keyresult .label { color:#26776d; text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; font-weight:800; }
+  .keyresult .value { font:700 1.3rem ui-monospace,SFMono-Regular,Consolas,monospace; margin-top:3px; }
+  .keyresult p { margin:5px 0 0; color:#436c68; font-size:.88rem; }
+  .visualpanel { padding:14px; }
+  .canvashead { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:4px 6px 10px; }
+  canvas { width:100%; height:auto; display:block; border-radius:12px; background:#fbfcff; border:1px solid #e4e9f2; }
+  .legend { display:flex; flex-wrap:wrap; gap:13px; color:var(--muted); font-size:.78rem; padding:10px 5px 2px; }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:5px; vertical-align:middle; }
+  .status { margin:9px 5px 2px; color:#2e4dab; font-weight:650; min-height:1.5em; }
+  .tablewrap { overflow:auto; max-height:325px; border:1px solid var(--line); border-radius:10px; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid #e9edf4; white-space:nowrap; }
+  th { position:sticky; top:0; background:#f4f6fb; z-index:1; color:#52617a; font-size:.77rem; text-transform:uppercase; letter-spacing:.04em; }
+  tr:last-child td { border-bottom:0; }
+  tr.active td { background:#eaf0ff; font-weight:700; color:#2348c1; }
+  tr.infinity td { color:#8d3550; }
+  .stats { margin-top:18px; }
+  .statgrid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .bars { display:flex; flex-direction:column; gap:7px; }
+  .barrow { display:grid; grid-template-columns:52px 1fr 24px; gap:7px; align-items:center; font-size:.82rem; }
+  .bartrack { height:11px; border-radius:20px; background:#edf0f7; overflow:hidden; }
+  .barfill { display:block; height:100%; border-radius:20px; background:var(--blue); }
+  .insights { padding-left:18px; margin-bottom:0; }
+  .insights li { margin:6px 0; }
+  footer { margin-top:18px; color:var(--muted); font-size:.82rem; text-align:center; }
+  @media(max-width:800px) { .layout { grid-template-columns:1fr; } .statgrid { grid-template-columns:1fr; } header { padding-top:26px; padding-bottom:27px; } }
+</style>
+</head>
+<body><nav style="padding:10px 16px;background:#f3f4f6;font:14px Arial,sans-serif"><a href="../">All homeworks</a> · <a href="../homework-2/">Homework 2</a></nav>
+<header>
+  <div class="eyebrow">Homework 1 · interactive learning demo</div>
+  <h1>From private scalar to public point</h1>
+  <p>Explore elliptic-curve scalar multiplication on a deliberately tiny finite-field curve. Change the scalar or base point, inspect each addition, and observe the small subgroup’s coordinate statistics.</p>
+</header>
+<main>
+  <div class="notice"><strong>Educational toy only.</strong> This curve has a tiny finite field and offers no real security. It is not Ethereum’s secp256k1 and must never be used to protect funds or secrets.</div>
+  <div class="layout">
+    <section class="panel">
+      <h2>1. Set the experiment</h2>
+      <div class="formula">E: y² ≡ x³ + 7 (mod 17)</div>
+      <p class="muted">The curve is fixed; choose a valid point on it as the base point G. The default matches the assignment.</p>
+      <div class="fieldrow">
+        <div>
+          <label for="scalar">Private scalar k</label>
+          <input id="scalar" type="number" min="1" max="100" value="6" step="1">
+        </div>
+        <div>
+          <label for="base">Base point G</label>
+          <select id="base"></select>
+        </div>
+      </div>
+      <div class="buttons">
+        <button id="compute">Compute kG</button>
+        <button id="animate" class="secondary">▶ Animate additions</button>
+        <button id="stop" class="dark" disabled>Stop</button>
+      </div>
+      <div class="keyresult" aria-live="polite">
+        <div class="label">Toy public key Q = kG</div>
+        <div class="value" id="publicKey">(5, 8)</div>
+        <p id="resultNote">For the default G=(1,5), the example k=6 gives Q=(5,8).</p>
+      </div>
+      <h3>What each step means</h3>
+      <p class="muted">Scalar multiplication repeatedly adds the same point: 2G=G+G, 3G=2G+G, and so on. The point-at-infinity (∞) acts as the identity element. Arithmetic, including division, is performed modulo 17.</p>
+      <div class="formula">Q = kG = G + G + ··· + G</div>
+      <h3>Finite-field point addition</h3>
+      <p class="muted">For distinct points, λ=(y₂−y₁)/(x₂−x₁) mod 17. For doubling, λ=3x₁²/(2y₁) mod 17. Then x₃=λ²−x₁−x₂ and y₃=λ(x₁−x₃)−y₁, all modulo 17. Modular division means multiplying by a modular inverse.</p>
+    </section>
+    <section class="panel visualpanel">
+      <div class="canvashead"><div><h2 style="margin:0">2. Curve and current multiple</h2><div class="muted" style="font-size:.85rem">Points are plotted at integer coordinates.</div></div><div class="muted" id="orderBadge">Subgroup order: 9</div></div>
+      <canvas id="curve" width="680" height="500" role="img" aria-label="Plot of points on the elliptic curve over integers modulo 17"></canvas>
+      <div class="legend"><span><i class="dot" style="background:#aab4c8"></i>Other curve points</span><span><i class="dot" style="background:#315ee8"></i>Multiples of G</span><span><i class="dot" style="background:#138a83"></i>Base point G</span><span><i class="dot" style="background:#bd7800"></i>Current kG</span></div>
+      <div class="status" id="status">Ready. Press “Animate additions” to step through kG.</div>
+    </section>
+  </div>
+  <section class="panel stats">
+    <h2>3. Multiplication trace</h2>
+    <p class="muted">The table lists every repeated addition up to k. Values repeat because scalar multiplication is cyclic; ∞ is reached when the scalar is a multiple of the base point’s order.</p>
+    <div class="tablewrap"><table><thead><tr><th>Step</th><th>Operation</th><th>Point</th><th>Observation</th></tr></thead><tbody id="traceBody"></tbody></table></div>
+  </section>
+  <section class="panel stats">
+    <h2>4. Statistical exploration of this toy subgroup</h2>
+    <p class="muted" id="statsIntro">Counts below use each distinct non-infinity multiple of the selected base point once, not all possible curve points.</p>
+    <div class="statgrid">
+      <div><h3>x-coordinate frequency</h3><div id="xBars" class="bars"></div></div>
+      <div><h3>y-coordinate frequency</h3><div id="yBars" class="bars"></div></div>
+    </div>
+    <div id="statsText"></div>
+  </section>
+  <section class="panel stats">
+    <h2>5. What the experiment does—and does not—show</h2>
+    <ul class="insights">
+      <li><strong>Determinism:</strong> the same G and k always produce the same Q.</li>
+      <li><strong>Finite cyclic subgroup:</strong> kG repeats with the order of G; this toy base point has order 9, so it is easy to search by trying every possibility.</li>
+      <li><strong>Not a hash:</strong> scalar multiplication outputs a curve point and preserves group structure. It is not designed to satisfy a hash function’s fixed-length digest and collision-resistance goals.</li>
+      <li><strong>“Avalanche” caution:</strong> changing k to k+1 gives (k+1)G=kG+G, not an unrelated output by definition. Tiny coordinate frequencies or bit counts from this toy example cannot establish cryptographic security.</li>
+    </ul>
+  </section>
+  <footer>All calculations run locally in your browser. No network access or real wallet data is used.</footer>
+</main>
+<script src="homework1.js"></script>
+</body>
+</html>
