@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive cryptography homework: toy elliptic-curve ElGamal, Caesar cipher, and simple cryptanalysis.">
+  <title>Homework 2 — Encryption & Cryptanalysis</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="hero">
+    <nav class="topnav">
+      <a class="brand" href="#top">N<span>G</span> / Cryptography</a>
+      <div class="navlinks">
+        <a href="#ecc">ECC</a><a href="#caesar">Caesar</a><a href="#attacks">Attacks</a><a href="#discussion">Discussion</a>
+      </div>
+    </nav>
+    <div class="hero-content" id="top">
+      <p class="eyebrow">STATISTICS · HOMEWORK 2</p>
+      <h1>Encryption, Decryption<br><em>& Cryptanalysis</em></h1>
+      <p class="lead">An interactive comparison of a toy elliptic-curve ElGamal scheme and the Caesar cipher, including simple attacks and statistical limitations.</p>
+      <div class="hero-meta"><span>01 / Public-key cryptography</span><span>02 / Classical cipher</span><span>03 / Cryptanalysis</span></div>
+      <a class="primary-link" href="#ecc">Explore the experiments <span>↓</span></a>
+    </div>
+    <div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div>
+  </header>
+
+  <main>
+    <section class="intro section">
+      <div class="section-kicker">OVERVIEW <span>— 00</span></div>
+      <div class="intro-grid">
+        <h2>Two ciphers.<br><em>Different assumptions.</em></h2>
+        <div>
+          <p>This page demonstrates how encryption and decryption work, then explores how small key spaces make recovery attacks practical. The elliptic-curve example uses the same <code>y² = x³ + 7 (mod 17)</code> toy curve from Homework 1, Part 1—not the real secp256k1 parameters.</p>
+          <p class="notice"><strong>Educational warning:</strong> the curve has only 18 points in total and the selected base point has order 9. It is deliberately insecure and must never be used to protect real data.</p>
+        </div>
+      </div>
+      <div class="stat-cards">
+        <article class="stat-card"><span class="stat-num">18</span><span>curve points, including infinity</span></article>
+        <article class="stat-card"><span class="stat-num">9</span><span>order of base point G = (1, 5)</span></article>
+        <article class="stat-card"><span class="stat-num">26</span><span>possible Caesar shifts</span></article>
+      </div>
+    </section>
+
+    <section class="section" id="ecc">
+      <div class="section-kicker">EXPERIMENT 01 <span>— ECC ELGAMAL</span></div>
+      <div class="section-heading">
+        <h2>Elliptic-curve <em>encryption</em></h2>
+        <p>Public-key encryption built from point addition and scalar multiplication on a tiny finite-field curve.</p>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-label">INPUT</div>
+          <label for="eccMessage">Message (ASCII text)</label>
+          <textarea id="eccMessage" rows="3" maxlength="18">HELLO</textarea>
+          <div class="form-row">
+            <div><label for="eccPrivate">Private key d</label><input id="eccPrivate" type="number" min="1" max="8" value="3"></div>
+            <div><label for="eccEphemeral">Ephemeral key r</label><input id="eccEphemeral" type="number" min="1" max="8" value="4"></div>
+          </div>
+          <button id="eccRun" class="button button-primary">Encrypt & decrypt</button>
+          <p class="hint">Allowed private and ephemeral scalars: 1–8. Keep the message short for this tiny demonstration.</p>
+        </div>
+        <div class="panel output-panel">
+          <div class="panel-label">OUTPUT</div>
+          <div class="output-line"><span>Public key Q = dG</span><strong id="eccPublic">—</strong></div>
+          <div class="output-line"><span>Encrypted blocks</span><strong id="eccBlockCount">—</strong></div>
+          <div class="output-line"><span>Recovered message</span><strong id="eccRecovered">Run the experiment</strong></div>
+          <div id="eccStatus" class="status" role="status">The result will appear here.</div>
+        </div>
+      </div>
+      <div class="panel table-panel">
+        <div class="table-title"><div><div class="panel-label">CIPHERTEXT TRACE</div><h3>Point pairs for each encoded block</h3></div><span class="tag">C₁ = rG · C₂ = M + rQ</span></div>
+        <div class="table-scroll"><table><thead><tr><th>#</th><th>Octal digit</th><th>Message point M</th><th>C₁ = rG</th><th>C₂ = M + rQ</th><th>Decrypted M</th></tr></thead><tbody id="eccTrace"><tr><td colspan="6">Run the experiment to see the point-by-point calculation.</td></tr></tbody></table></div>
+      </div>
+      <div class="explain-grid">
+        <article><span class="number">A</span><h3>Key generation</h3><p>Choose private scalar <code>d</code>, then calculate public key <code>Q = dG</code>. Everyone may know <code>G</code> and <code>Q</code>; only the owner should know <code>d</code>.</p></article>
+        <article><span class="number">B</span><h3>Encryption</h3><p>For each message point <code>M</code>, choose ephemeral scalar <code>r</code>. Compute <code>C₁ = rG</code> and <code>C₂ = M + rQ</code>.</p></article>
+        <article><span class="number">C</span><h3>Decryption</h3><p>Use the private key to calculate <code>M = C₂ − dC₁</code>. Since <code>dC₁ = d(rG) = r(dG) = rQ</code>, the masking point cancels.</p></article>
+      </div>
+      <div class="math-note"><strong>How text is represented:</strong> ASCII codes are written as three octal digits. Each digit 0–7 is mapped to point (digit + 1)G, so the toy group can represent it. This is an intentionally inefficient teaching encoding, not a standard message encoding.</div>
+    </section>
+
+    <section class="section alt-section" id="caesar">
+      <div class="section-kicker">EXPERIMENT 02 <span>— CAESAR CIPHER</span></div>
+      <div class="section-heading">
+        <h2>A classic <em>shift cipher</em></h2>
+        <p>Each English letter is shifted by a fixed key. Non-letter characters are preserved, and letter case is retained.</p>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-label">MESSAGE</div>
+          <label for="caesarInput">Plaintext or ciphertext</label>
+          <textarea id="caesarInput" rows="4">Cryptography is about keys, assumptions, and careful testing.</textarea>
+          <div class="form-row">
+            <div><label for="caesarKey">Shift key (0–25)</label><input id="caesarKey" type="number" min="0" max="25" value="3"></div>
+            <div><label for="caesarMode">Operation</label><select id="caesarMode"><option value="encrypt">Encrypt</option><option value="decrypt">Decrypt</option></select></div>
+          </div>
+          <button id="caesarRun" class="button button-primary">Run Caesar cipher</button>
+        </div>
+        <div class="panel output-panel">
+          <div class="panel-label">RESULT</div>
+          <label for="caesarOutput">Output text</label>
+          <textarea id="caesarOutput" rows="4" readonly placeholder="Your result appears here…"></textarea>
+          <div class="button-row"><button id="caesarCopy" class="button button-quiet">Copy output</button><button id="caesarRoundTrip" class="button button-quiet">Encrypt, then decrypt</button></div>
+          <p id="caesarStatus" class="status" role="status">There are only 26 possible shifts.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="attacks">
+      <div class="section-kicker">EXPERIMENT 03 <span>— CRYPTANALYSIS</span></div>
+      <div class="section-heading">
+        <h2>Attack the <em>key space</em></h2>
+        <p>Try all Caesar keys, rank likely plaintexts using English letter frequencies, or enumerate the toy ECC private keys.</p>
+      </div>
+      <div class="attack-grid">
+        <article class="panel attack-panel">
+          <div class="panel-label">ATTACK A</div><h3>Caesar key recovery</h3>
+          <label for="attackCipher">Ciphertext</label>
+          <textarea id="attackCipher" rows="4">Wklv lv d whvw phvvdjh.</textarea>
+          <div class="button-row"><button id="bruteForce" class="button button-primary">Try all 26 keys</button><button id="frequencyAttack" class="button button-quiet">Rank by frequency</button></div>
+          <p class="hint">Frequency ranking compares observed A–Z counts with typical English frequencies using a chi-square score. It works best with longer, ordinary English text.</p>
+          <div class="table-scroll"><table><thead><tr><th>Key</th><th>Candidate plaintext</th><th>Score</th></tr></thead><tbody id="caesarCandidates"><tr><td colspan="3">Attack results appear here.</td></tr></tbody></table></div>
+        </article>
+        <article class="panel attack-panel">
+          <div class="panel-label">ATTACK B</div><h3>Restricted ECC key search</h3>
+          <p>Because the demo private key is limited to 1–8, an attacker can test every candidate, compute <code>dG</code>, and compare it with the public key.</p>
+          <div class="form-row">
+            <div><label for="attackTargetD">Demo private key</label><select id="attackTargetD"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></div>
+            <div><label for="attackTargetR">Demo ephemeral r</label><select id="attackTargetR"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></div>
+          </div>
+          <button id="eccAttack" class="button button-primary">Enumerate private keys</button>
+          <div id="eccAttackResult" class="attack-result" role="status">Run the search to reveal the matching candidate.</div>
+          <p class="hint">This attack exploits the restricted key space, not a break of elliptic-curve cryptography. A properly sized ECC private-key space is vastly too large for exhaustive search.</p>
+        </article>
+      </div>
+      <div class="panel chart-panel">
+        <div class="table-title"><div><div class="panel-label">STATISTICAL EXPLORATION</div><h3>Letter distribution before and after encryption</h3></div><span class="tag">A–Z frequencies</span></div>
+        <label for="frequencyText">Text to analyze</label>
+        <textarea id="frequencyText" rows="3">The quick brown fox jumps over the lazy dog. This is a longer example sentence for letter frequency analysis.</textarea>
+        <div class="button-row"><button id="analyzeLetters" class="button button-primary">Analyze letters</button><button id="shiftFrequency" class="button button-quiet">Analyze Caesar-shifted version</button></div>
+        <div id="frequencyChart" class="frequency-chart" aria-label="Letter frequency chart"></div>
+        <p class="hint">A Caesar shift permutes letter labels but preserves the frequency shape. ECC point outputs do not inherit the strong language-letter patterns of the original text in this toy encoding; however, this tiny group is not designed to provide real-world security or statistical guarantees.</p>
+      </div>
+    </section>
+
+    <section class="section alt-section" id="discussion">
+      <div class="section-kicker">DISCUSSION <span>— 04</span></div>
+      <div class="section-heading"><h2>What do the experiments <em>show?</em></h2><p>Security depends on the algorithm, key space, message representation, and assumptions—not simply on whether a result looks random.</p></div>
+      <div class="comparison-wrap">
+        <table class="comparison">
+          <thead><tr><th>Property</th><th>Toy ECC ElGamal</th><th>Caesar cipher</th></tr></thead>
+          <tbody>
+            <tr><td>Key model</td><td>Private scalar <code>d</code>; public point <code>Q = dG</code></td><td>Shared integer shift from 0 to 25</td></tr>
+            <tr><td>Encryption</td><td>Uses a fresh ephemeral scalar and elliptic-curve point operations</td><td>Moves each letter by the same number of alphabet positions</td></tr>
+            <tr><td>Decryption</td><td>Uses the private scalar to cancel the shared masking point</td><td>Shifts letters back by the same key</td></tr>
+            <tr><td>Key-space attack</td><td>Feasible here because only 8 nonzero scalar candidates are used</td><td>Trivial: test all 26 keys</td></tr>
+            <tr><td>Statistics</td><td>Point arithmetic is not a hash function and does not imply an avalanche effect; tiny group outputs repeat</td><td>Letter frequencies are preserved up to relabeling, enabling language-based attacks</td></tr>
+            <tr><td>Real-world status</td><td>Demonstration only; real ECC requires standardized parameters, large keys, secure encoding, and secure implementation</td><td>Insecure and unsuitable for protecting information</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="conclusion-grid">
+        <article><h3>Why Caesar frequency analysis works</h3><p>Natural languages do not use letters equally often. A short ciphertext may be ambiguous, but longer samples reveal a more stable distribution. Exhaustive search always produces all 26 candidates; frequency scoring only ranks them and can be wrong for short text, unusual vocabulary, names, or non-English text.</p></article>
+        <article><h3>Why ECC brute force is different</h3><p>The ECC attack checks candidate private scalars against a known public key. It succeeds here because the allowed range is artificially tiny. For correctly generated ECC keys, exhaustive search is infeasible with realistic computing resources. This does not mean every ECC-based toy design is secure: small groups, poor randomness, unsafe encodings, and implementation flaws create additional weaknesses.</p></article>
+      </div>
+      <p class="references">Conceptual basis: Homework 1, Part 1 (toy elliptic curve and scalar multiplication); Homework 2 brief (Caesar cipher, statistical cryptanalysis, restricted-key attack). The ECC encryption used here is textbook toy EC ElGamal for demonstration.</p>
+    </section>
+  </main>
+  <footer><div><span class="brand">NG / Cryptography</span><span>Homework 2 · Interactive educational demonstration</span></div><a href="#top">Back to top ↑</a></footer>
+</body>
+</html>
